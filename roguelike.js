@@ -14,6 +14,14 @@ var map;
 // the ascii display, as a 2d array of characters
 var asciidisplay;
 
+// a list of all actors; 0 is the player
+var player;
+var actorList;
+var livingEnemies;
+
+// points to each actor in its position, for quick searching
+var actorMap;
+
 // initialize phaser, call create() once done
 var game = new Phaser.Game(COLS * FONT * 0.6, ROWS * FONT, Phaser.AUTO, null, {
   create: create
@@ -26,6 +34,8 @@ function create() {
   // initialize map
   initMap();
 
+  // initialize actors
+  initActors();
 
   // initialize screen
   asciidisplay = [];
@@ -36,6 +46,8 @@ function create() {
       newRow.push( initCell('', x, y) );
   }
   drawMap();
+
+  drawActors();
 }
 
 function onKeyUp(event) {
@@ -75,4 +87,38 @@ function initCell(chr, x, y) {
   // add a single cell in a given position to the ascii display
   var style = { font: FONT + "px monospace", fill:"#fff"};
   return game.add.text(FONT*0.6*x, FONT*y, chr, style);
+}
+
+function randomInt(max) {
+  return Math.floor(Math.random() * max);
+}
+
+function initActors() {
+  // create actors at random locations
+  actorList = [];
+  actorMap = {};
+  for (var e=0; e<ACTORS; e++) {
+    // create new actor
+    var actor = { x:0, y:0, hp:e == 0?3:1 };
+    do {
+      // pick a random position that is both a floor and not occupied
+      actor.y=randomInt(ROWS);
+      actor.x=randomInt(COLS);
+    } while ( map[actor.y][actor.x] == '#' || actorMap[actor.y + "_" + actor.x] != null );
+
+    // add references to the actor to the actors list & map
+    actorMap[actor.y + "_" + actor.x]= actor;
+    actorList.push(actor);
+  }
+
+  // the player is the first actor in the list
+  player = actorList[0];
+  livingEnemies = ACTORS-1;
+}
+
+function drawActors() {
+  for (var a in actorList) {
+    if (actorList[a].hp > 0)
+      asciidisplay[actorList[a].y][actorList[a].x].content = a == 0?''+player.hp:'e';
+  }
 }
