@@ -51,15 +51,31 @@ function create() {
 }
 
 function onKeyUp(event) {
+  // draw map to overwrite previous actors positions
+  drawMap();
+
+  // act on player input
+  var acted = false;
   switch (event.keyCode) {
-    case Keyboard.LEFT:
+    case Phaser.Keyboard.LEFT:
+      acted = moveTo(player, {x:-1, y:0});
+      break;
 
-    case Keyboard.RIGHT:
+    case Phaser.Keyboard.RIGHT:
+      acted = moveTo(player,{x:1, y:0});
+      break;
 
-    case Keyboard.UP:
+    case Phaser.Keyboard.UP:
+      acted = moveTo(player, {x:0, y:-1});
+      break;
 
-    case Keyboard.DOWN:
+    case Phaser.Keyboard.DOWN:
+      acted = moveTo(player, {x:0, y:1});
+      break;
   }
+
+  // draw actors in new positions
+  drawActors();
 }
 
 function initMap() {
@@ -73,6 +89,7 @@ function initMap() {
       else
         newRow.push('.');
     }
+    console.log(map)
     map.push(newRow);
   }
 }
@@ -99,7 +116,7 @@ function initActors() {
   actorMap = {};
   for (var e=0; e<ACTORS; e++) {
     // create new actor
-    var actor = { x:0, y:0, hp:e == 0?3:1 };
+    var actor = { x:0, y:0, hp:e == 0 ? 3 : 1 };
     do {
       // pick a random position that is both a floor and not occupied
       actor.y=randomInt(ROWS);
@@ -109,6 +126,7 @@ function initActors() {
     // add references to the actor to the actors list & map
     actorMap[actor.y + "_" + actor.x]= actor;
     actorList.push(actor);
+    console.log(actorList)
   }
 
   // the player is the first actor in the list
@@ -118,7 +136,57 @@ function initActors() {
 
 function drawActors() {
   for (var a in actorList) {
+    // debugger
     if (actorList[a].hp > 0)
-      asciidisplay[actorList[a].y][actorList[a].x].content = a == 0?''+player.hp:'e';
+      asciidisplay[actorList[a].y][actorList[a].x].content = a == 0 ? '' + player.hp : 'e';
   }
+}
+
+function canGo(actor,dir) {
+  return actor.x+dir.x >= 0 &&
+    actor.x+dir.x <= COLS - 1 &&
+    actor.y+dir.y >= 0 &&
+    actor.y+dir.y <= ROWS - 1 &&
+    map[actor.y+dir.y][actor.x +dir.x] == '.';
+}
+
+function moveTo(actor, dir) {
+  // check if actor can move in the given direction
+  if (!canGo(actor,dir))
+    return false;
+
+  // moves actor to the new location
+  var newKey = (actor.y + dir.y) +'_' + (actor.x + dir.x);
+  // if the destination tile has an actor in it
+  if (actorMap[newKey] != null) {
+    // decrement hitpoints of the actor at the destination tile
+    var victim = actorMap[newKey];
+    victim.hp--;
+
+    // if it's dead remove its reference
+    if (victim.hp == 0) {
+      actorMap[newKey]= null;
+      // actorList[actorList.indexOf(victim)] = null;
+      actorList.splice(actorList.indexOf(victim), 1);
+      if(victim != player) {
+        livingEnemies--;
+        if (livingEnemies == 0) {
+          // victory message
+          var victory = game.add.text(game.world.centerX, game.world.centerY, 'Victory!\nCtrl+r to restart', { fill : '#2e2', align: "center" } );
+          victory.anchor.setTo(0.5,0.5);
+        }
+      }
+    }
+  } else {
+    // remove reference to the actor's old position
+    actorMap[actor.y + '_' + actor.x]= null;
+
+    // update position
+    actor.y+=dir.y;
+    actor.x+=dir.x;
+
+    // add reference to the actor's new position
+    actorMap[actor.y + '_' + actor.x]=actor;
+  }
+  return true;
 }
